@@ -1,0 +1,32 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:5.2.0'
+    }
+}
+
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'java'
+apply plugin: 'maven'
+
+version = '0.1'
+
+sourceCompatibility = 11.0
+targetCompatibility = 11.0
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile group: 'com.amazonaws', name: 'aws-java-sdk-cognitoidp', version: '1.11.633'
+    testCompile "junit:junit:4.8.2"
+}
+
+shadowJar {
+    manifest {
+        attributes 'Main-Class': 'com.happysathya.aws.cognito.DeleteUserByPhoneNumber'
+    }
+}
