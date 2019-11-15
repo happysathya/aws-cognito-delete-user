@@ -25,28 +25,39 @@ public class DeleteUserByPhoneNumber {
         String poolName = getProperty("poolName");
         String phoneNumber = getProperty("phoneNumber");
 
-        Optional<UserPoolDescriptionType> result = findUserPool(identityProvider, poolName, null);
+        Optional<UserPoolDescriptionType> userPool = findUserPool(identityProvider, poolName, null);
+        if (userPool.isEmpty())
+            throw new RuntimeException(String.format("Sorry, unable to find %s", poolName));
 
-        result.ifPresent(userPoolDescriptionType -> {
-            ListUsersRequest listUsersRequest = new ListUsersRequest()
-                    .withFilter(String.format("phone_number = \"%s\"", phoneNumber))
-                    .withUserPoolId(userPoolDescriptionType.getId());
-            Optional<UserType> user = identityProvider.listUsers(listUsersRequest).getUsers().stream().findFirst();
-            user.ifPresent(userType -> {
-                System.out.println(userType.getUsername());
-                AdminDeleteUserRequest adminDeleteUserRequest = new AdminDeleteUserRequest()
-                        .withUsername(userType.getUsername())
-                        .withUserPoolId(userPoolDescriptionType.getId());
-                AdminDeleteUserResult adminDeleteUserResult = identityProvider.adminDeleteUser(adminDeleteUserRequest);
-                System.out.println(adminDeleteUserResult.toString());
-            });
+        userPool.ifPresent(userPoolDescriptionType -> {
+            Optional<UserType> user = findUser(identityProvider, phoneNumber, userPoolDescriptionType);
             if (user.isEmpty())
-                throw new RuntimeException(String.format("Sorry, unable to find %s in %s", poolName, phoneNumber));
+                throw new RuntimeException(String.format("Sorry, unable to find %s in %s", phoneNumber, poolName));
+            deleteUser(identityProvider, userPoolDescriptionType, user.get());
         });
 
 
     }
 
+    private static AdminDeleteUserResult deleteUser(AWSCognitoIdentityProvider identityProvider,
+                                                    UserPoolDescriptionType userPoolDescriptionType,
+                                                    UserType userType) {
+        AdminDeleteUserRequest adminDeleteUserRequest = new AdminDeleteUserRequest()
+                .withUsername(userType.getUsername())
+                .withUserPoolId(userPoolDescriptionType.getId());
+        return identityProvider.adminDeleteUser(adminDeleteUserRequest);
+    }
+
+    private static Optional<UserType> findUser(AWSCognitoIdentityProvider identityProvider,
+                                               String phoneNumber,
+                                               UserPoolDescriptionType userPoolDescriptionType) {
+        ListUsersRequest listUsersRequest = new ListUsersRequest()
+                .withFilter(String.format("phone_number = \"%s\"", phoneNumber))
+                .withUserPoolId(userPoolDescriptionType.getId());
+        return identityProvider.listUsers(listUsersRequest).getUsers().stream().findFirst();
+    }
+
+    //recursion
     private static Optional<UserPoolDescriptionType> findUserPool(AWSCognitoIdentityProvider identityProvider,
                                                                   String userPoolName,
                                                                   String searchToken) {
